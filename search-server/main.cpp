@@ -124,8 +124,6 @@ vector<string> SplitIntoWords(const string& text) {
     string word;
     for (const char c : text) {
         if (c == ' ') {
-            if (word == "-"s)
-                throw invalid_argument("no text after -");
             if (!word.empty()) {
                 words.push_back(word);
                 word.clear();
@@ -209,9 +207,7 @@ public:
     vector<Document> FindTopDocuments(const string& raw_query, DocumentPredicate document_predicate) const {
         vector<Document> matched_documents;
         auto query = ParseQuery(raw_query);
-        /*if (!query.has_value()) {
-            return nullopt;
-        }*/
+        
 
         matched_documents = FindAllDocuments(query, document_predicate);
 
@@ -256,16 +252,12 @@ public:
         vector<string> matched_documents;
         DocumentStatus status;
         const auto query = ParseQuery(raw_query);
-        /*if (!query.has_value()) {
-            return nullopt;
-        }*/
+        
 
         if (documents_.count(document_id)) {
             status = documents_.at(document_id).status;
         }
-        /*else {
-            return nullopt;
-        }*/
+        
 
         if (!query.plus_words.empty()) {
             for (const auto& minus_word : query.minus_words) {
@@ -375,9 +367,7 @@ private:
         if (cnt_minus > 1 || text.size() == cnt_minus) {
             throw invalid_argument("too many - before the word");
         }
-        if (!none_of(text.begin(), text.end(), [](char c) {
-            return c >= '\0' && c < ' ';
-            }))
+        if (!IsValidWord(text))
         {
             throw invalid_argument("incorrect symbols in query");
         }
@@ -385,6 +375,8 @@ private:
         if (text[0] == '-') {
             is_minus = true;
             text = text.substr(1);
+            if (text.empty() || text[0] == ' ')
+                throw invalid_argument("no text after -");
         }
         return { text, is_minus, IsStopWord(text) };
     }
@@ -397,10 +389,6 @@ private:
     Query ParseQuery(const string& text) const {
         Query query;
         for (const string& word : SplitIntoWords(text)) {
-            if (!IsValidWord(word)) {
-                throw invalid_argument("incorrect word in query");
-            }
-
             const QueryWord query_word = ParseQueryWord(word);
             if (!query_word.is_stop) {
                 if (query_word.is_minus) {
