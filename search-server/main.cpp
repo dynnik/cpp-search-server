@@ -168,8 +168,6 @@ enum class DocumentStatus {
 class SearchServer {
 public:
 
-    inline static constexpr int INVALID_DOCUMENT_ID = -1;
-
     explicit SearchServer(const string& stop_words) {
         SetStopWords(stop_words);
     }
@@ -195,24 +193,16 @@ public:
 
     void AddDocument(int document_id, const string& document,
         DocumentStatus status, const vector<int>& ratings) {
-        if (document_id >= 0 && documents_.count(document_id) == 0) {
-            vector<string> words;
-            bool check = SplitIntoWordsNoStop(document, words);
-            if (!check) {
-                throw invalid_argument("incorrect symbol in text");
-            }
-
-            const double inv_word_count = 1.0 / words.size();
-            for (const string& word : words) {
-                word_to_document_freqs_[word][document_id] += inv_word_count;
-            }
-            documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
-            document_id_direct_order_.push_back(document_id);
-        }
-        else
-        {
+        if (document_id < 0 || documents_.count(document_id) != 0) {
             throw invalid_argument("incorrect id");
         }
+        vector<string> words = SplitIntoWordsNoStop(document);
+        const double inv_word_count = 1.0 / words.size();
+        for (const string& word : words) {
+            word_to_document_freqs_[word][document_id] += inv_word_count;
+        }
+        documents_.emplace(document_id, DocumentData{ ComputeAverageRating(ratings), status });
+        document_id_direct_order_.push_back(document_id);
     }
 
     template <typename DocumentPredicate>
@@ -294,7 +284,7 @@ public:
                 }
             }
         }
-        return tuple(matched_documents, status);
+        return { matched_documents, status };
     }
 
     tuple<vector<string>, DocumentStatus> MatchDocument(const char* raw_query, int document_id) const {
@@ -310,22 +300,7 @@ public:
 
 private:
 
-    static bool IsValidWord(const string& word) {
-        int cnt_minus = 0;
-        for (const char& ch : word) {
-            if (ch == '-') {
-                ++cnt_minus;
-            }
-            else {
-                break;
-            }
-        }
-
-        if (cnt_minus > 1 || word.size() == cnt_minus) {
-            throw invalid_argument("too many - before the word");
-            return false;
-        }
-
+    static bool IsValidWord(const string& word){
         return none_of(word.begin(), word.end(), [](char c) {
             return c >= '\0' && c < ' ';
             });
@@ -358,29 +333,25 @@ private:
         return stop_words_.count(word) > 0;
     }
 
-    [[nodiscard]] bool SplitIntoWordsNoStop(const string& text, vector<string>& result) const {
+    vector<string> SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
             if (!IsValidWord(word)) {
-                result = words;
-                return false;
+                throw invalid_argument("incorrect symbol in text");
             }
 
             if (!IsStopWord(word)) {
                 words.push_back(word);
             }
         }
-        result = words;
-        return true;
+        return words;
     }
 
     static int ComputeAverageRating(const vector<int>& ratings) {
         if (ratings.empty()) {
             return 0;
         }
-        int rating_sum = std::accumulate(ratings.begin(), ratings.end(), 0, [](const auto& l, const auto& r) {
-            return l + r;
-            });
+        int rating_sum = std::accumulate(ratings.begin(), ratings.end(), 0);
         return rating_sum / static_cast<int>(ratings.size());
     }
 
@@ -391,6 +362,25 @@ private:
     };
 
     QueryWord ParseQueryWord(string text) const {
+        int cnt_minus = 0;
+        for (const char& ch : text) {
+            if (ch == '-') {
+                ++cnt_minus;
+            }
+            else {
+                break;
+            }
+        }
+
+        if (cnt_minus > 1 || text.size() == cnt_minus) {
+            throw invalid_argument("too many - before the word");
+        }
+        if (!none_of(text.begin(), text.end(), [](char c) {
+            return c >= '\0' && c < ' ';
+            }))
+        {
+            throw invalid_argument("incorrect symbols in query");
+        }
         bool is_minus = false;
         if (text[0] == '-') {
             is_minus = true;
