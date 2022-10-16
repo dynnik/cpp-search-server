@@ -16,8 +16,6 @@
 
 const int MAX_RESULT_DOCUMENT_COUNT = 5;
 
-
-
 class SearchServer {
 public:
     template <typename StringContainer>
@@ -40,9 +38,7 @@ public:
 
     template <typename DocumentPredicate>
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const;
-
     std::vector<Document> FindTopDocuments(const std::string& raw_query, DocumentStatus status) const;
-
     std::vector<Document> FindTopDocuments(const std::string& raw_query) const;
     
 
