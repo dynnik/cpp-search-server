@@ -11,16 +11,15 @@ public:
     explicit RequestQueue(const SearchServer& search_server);
     
     template <typename DocumentPredicate>
-    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate);
-    std::vector<Document> AddFindRequest(const std::string& raw_query, DocumentStatus status);
-    std::vector<Document> AddFindRequest(const std::string& raw_query);
+    int AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate);
+    int AddFindRequest(const std::string& raw_query, DocumentStatus status);
+    int AddFindRequest(const std::string& raw_query);
     
     int GetNoResultRequests() const;
     
 private:
     struct QueryResult {
-        std::string raw_query;
-        std::vector<Document> results;
+        int results;
     };
     
     std::deque<QueryResult> requests_;
@@ -33,11 +32,10 @@ private:
 
 
 template <typename DocumentPredicate>
-std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query,
+int RequestQueue::AddFindRequest(const std::string& raw_query,
                                                    DocumentPredicate document_predicate) {
     QueryResult result;
-    result.raw_query = raw_query;
-    result.results = server->FindTopDocuments(raw_query, document_predicate);
+    result.results = server->FindTopDocuments(raw_query, document_predicate).size();
     AddResult(result);
     return result.results;
 }
