@@ -32,7 +32,7 @@ int SearchServer::GetDocumentCount() const {
     return documents_.size();
 }
 
-const std::map<std::string, double> SearchServer::GetWordFrequencies(int document_id) const {
+const std::map<std::string, double>& SearchServer::GetWordFrequencies(int document_id) const {
     static std::map<std::string, double> map = {};
     if (document_ids_.count(document_id) == 0) {
         return map;
