@@ -46,7 +46,7 @@ public:
     int GetDocumentCount() const;
 
     // возвращает слова документа и их term-frequency
-    std::map<std::string, double> GetWordFrequencies(int document_id) const;
+    const std::map<std::string, double> GetWordFrequencies(int document_id) const;
 
 
     // итераторы по id-s документов в сервере
@@ -105,12 +105,12 @@ private:
 template <typename DocumentPredicate>
 std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query, DocumentPredicate document_predicate) const {
     const auto query = ParseQuery(raw_query);
-
+    const auto border = 1e-6;
     auto matched_documents = FindAllDocuments(query, document_predicate);
 
     std::sort(matched_documents.begin(), matched_documents.end(),
-        [](const Document& lhs, const Document& rhs) {
-            if (std::abs(lhs.relevance - rhs.relevance) < 1e-6) {
+        [border](const Document& lhs, const Document& rhs) {
+            if (std::abs(lhs.relevance - rhs.relevance) < border) {
                 return lhs.rating > rhs.rating;
             }
             else {
