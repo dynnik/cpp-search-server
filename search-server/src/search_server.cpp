@@ -32,8 +32,8 @@ int SearchServer::GetDocumentCount() const {
     return documents_.size();
 }
 
-std::map<std::string, double> SearchServer::GetWordFrequencies(int document_id) const {
-    std::map<std::string, double> map = {};
+const std::map<std::string, double> SearchServer::GetWordFrequencies(int document_id) const {
+    static std::map<std::string, double> map = {};
     if (document_ids_.count(document_id) == 0) {
         return map;
     }
@@ -41,27 +41,21 @@ std::map<std::string, double> SearchServer::GetWordFrequencies(int document_id) 
 }
 
 void SearchServer::RemoveDocument(int document_id) {
-    if (documents_.count(document_id) != 0) {
-
-        // собираем вектор слов документа
-        std::vector<std::string> words(document_to_word_.at(document_id).size());
-        std::transform(document_to_word_.at(document_id).begin(),
-            document_to_word_.at(document_id).end(), words.begin(), [](auto& word) {
-                return word.first;
-            });
-
-        // удаляем слова
-        std::for_each(words.begin(), words.end(), [this, document_id](auto& word_view) {
-            word_to_document_freqs_.find(word_view)->second.erase(document_id); });
-
-        // подчищаем в словаре слова, которые остались без документов
-        std::for_each(words.begin(), words.end(), [this, document_id](auto& word_view) {
-            auto it = word_to_document_freqs_.find(word_view);
+    if (documents_.count(document_id) == 0) {
+        return;
+    }
+    else
+    {
+        for(auto& [word, value] : document_to_word_.at(document_id))
+        {
+            // удаляем слова
+            word_to_document_freqs_.find(word)->second.erase(document_id);
+            // подчищаем в словаре слова, которые остались без документов
+            auto it = word_to_document_freqs_.find(word);
             if (it->second.empty()) {
                 word_to_document_freqs_.erase(it);
             }
-            });
-
+        }
         documents_.erase(document_id);
         document_ids_.erase(document_id);
         document_to_word_.erase(document_id);
