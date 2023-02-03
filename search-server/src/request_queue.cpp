@@ -1,39 +1,20 @@
 #include "request_queue.h"
-
-using namespace std;
-
-RequestQueue::RequestQueue(const SearchServer& search_server) {
-    server = &search_server;
-    number_of_empty_docs_ = 0;
+ 
+RequestQueue::RequestQueue(const SearchServer& search_server) 
+    : search_server_(search_server)
+{
 }
-
-int RequestQueue::AddFindRequest(const string& raw_query, DocumentStatus status) {
-    QueryResult result;
-    result.results = server->FindTopDocuments(raw_query, status).size();
-    AddResult(result);
-    return result.results;
+ 
+std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentStatus status) {
+    return AddFindRequest(raw_query, [status](int document_id, DocumentStatus document_status, int rating) {
+        return document_status == status;
+        });
 }
-
-int RequestQueue::AddFindRequest(const string& raw_query) {
-    QueryResult result;
-    result.results = server->FindTopDocuments(raw_query).size();
-    AddResult(result);
-    return result.results;
+ 
+std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query) {
+    return AddFindRequest(raw_query, DocumentStatus::ACTUAL);
 }
-
+ 
 int RequestQueue::GetNoResultRequests() const {
-    return number_of_empty_docs_;
-}
-
-void RequestQueue::AddResult(const QueryResult &result) {
-    if (requests_.size() == sec_in_day_) {
-        if (requests_.front().results == 0) {
-            --number_of_empty_docs_;
-        }
-        requests_.pop_front();
-    }
-    if (result.results == 0) {
-        ++number_of_empty_docs_;
-    }
-    requests_.push_back(result);
+    return count(requests_.begin(), requests_.end(), 0);
 }
